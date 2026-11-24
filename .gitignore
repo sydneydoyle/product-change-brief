@@ -1,3 +1,4 @@
 brief.md
 .env
 __pycache__/
+.cache/
