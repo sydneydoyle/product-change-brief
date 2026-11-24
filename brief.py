@@ -52,12 +52,17 @@ def main():
         + json.dumps(evidence)
     )
     payload = json.dumps({"model": args.model, "max_tokens": 1500, "messages": [{"role": "user", "content": prompt}]}).encode()
+    if args.model == "claude-sonnet-5-5":
+        request_body = json.loads(payload)
+        request_body["thinking"] = {"type": "between_tools"}
+        request_body["output_config"] = {"effort": "high"}
+        payload = json.dumps(request_body).encode()
     response = request_json("https://api.anthropic.com/v1/messages", {
         "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01"
     }, payload)
     blocks = [block["text"] for block in response.get("content", []) if block.get("type") == "text"]
     if not blocks:
-        raise RuntimeError("Claude returned no text; no brief was written.")
+        raise RuntimeError(f"Claude returned no text (stop reason: {response.get('stop_reason', 'unknown')}); no brief was written.")
     title = f"# Change brief: {args.repo}\n\n"
     note = f"Based on up to 100 commit messages from the last {args.days} days. Findings require review.\n\n"
     Path(args.output).write_text(title + note + "\n".join(blocks) + "\n", encoding="utf-8")
